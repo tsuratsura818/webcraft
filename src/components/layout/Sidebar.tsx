@@ -7,6 +7,7 @@ const navItems = [
   { href: "/dashboard", label: "ダッシュボード", icon: "📊" },
   { href: "/projects", label: "案件管理", icon: "📁" },
   { href: "/sitemap-tool", label: "ディレクトリマップ", icon: "🗺️" },
+  { href: "/sitemap-generator", label: "サイトマップ作成", icon: "🌳" },
 ];
 
 export function Sidebar() {
