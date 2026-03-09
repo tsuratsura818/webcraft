@@ -12,6 +12,8 @@ import {
   MATERIAL_OPTIONS,
   CMS_OPTIONS,
   BUDGET_RANGES,
+  SERVER_TYPES,
+  SSL_OPTIONS,
 } from "@/types/hearing";
 import {
   generateHearingHtml,
@@ -664,6 +666,43 @@ function PhaseOperation({ data, update, toggleArray }: PhaseWithArrayProps) {
         <TextArea value={data.operationPlan} onChange={(v) => update({ operationPlan: v })} placeholder="月2回のお知らせ更新を社内で実施 / ブログ記事は外注" rows={3} />
       </Field>
       <Toggle label="保守・運用契約を希望する" checked={data.maintenanceRequired} onChange={(v) => update({ maintenanceRequired: v })} />
+
+      <h3 className="mb-3 mt-6 text-sm font-semibold text-zinc-700 dark:text-zinc-300">サーバー情報</h3>
+      <div className="grid grid-cols-2 gap-4">
+        <Field label="サーバー種別">
+          <SelectInput value={data.serverType} onChange={(v) => update({ serverType: v })} options={SERVER_TYPES} />
+        </Field>
+        <Field label="サーバー名・プラン" hint="例: Xserver スタンダード">
+          <TextInput value={data.serverName} onChange={(v) => update({ serverName: v })} placeholder="Xserver / さくら / ConoHa / AWS など" />
+        </Field>
+      </div>
+      <Field label="サーバーログイン情報メモ" hint="管理画面URL・ID等の所在メモ（パスワード自体は記載しないでください）">
+        <TextArea value={data.serverLoginInfo} onChange={(v) => update({ serverLoginInfo: v })} placeholder="管理画面: https://panel.example.com&#10;FTP情報はクライアント管理" rows={2} />
+      </Field>
+
+      <h3 className="mb-3 mt-6 text-sm font-semibold text-zinc-700 dark:text-zinc-300">ドメイン情報</h3>
+      <div className="grid grid-cols-2 gap-4">
+        <Field label="ドメイン名">
+          <TextInput value={data.domainName} onChange={(v) => update({ domainName: v })} placeholder="example.com" />
+        </Field>
+        <Field label="ドメイン管理会社" hint="お名前.com / ムームードメイン 等">
+          <TextInput value={data.domainRegistrar} onChange={(v) => update({ domainRegistrar: v })} placeholder="お名前.com / Xserverドメイン" />
+        </Field>
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        <Field label="ドメイン有効期限">
+          <TextInput value={data.domainExpiry} onChange={(v) => update({ domainExpiry: v })} type="date" />
+        </Field>
+        <Field label="SSL証明書">
+          <SelectInput value={data.sslType} onChange={(v) => update({ sslType: v })} options={SSL_OPTIONS} />
+        </Field>
+        <Field label="DNS管理">
+          <TextInput value={data.dnsManagement} onChange={(v) => update({ dnsManagement: v })} placeholder="サーバー会社 / Cloudflare" />
+        </Field>
+      </div>
+      <Field label="メールサーバー" hint="現在のメール利用状況">
+        <TextInput value={data.mailServer} onChange={(v) => update({ mailServer: v })} placeholder="Google Workspace / サーバー付属 / 独自メールサーバー" />
+      </Field>
 
       <div className="mt-6">
         <Field label="備考・その他">

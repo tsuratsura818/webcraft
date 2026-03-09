@@ -56,6 +56,17 @@ export interface HearingSheet {
   operationPlan: string; // 公開後の運用体制
   maintenanceRequired: boolean; // 保守契約希望
 
+  // インフラ
+  serverType: string; // サーバー種別
+  serverName: string; // サーバー名・プラン
+  serverLoginInfo: string; // サーバーログイン情報メモ
+  domainName: string; // ドメイン名
+  domainRegistrar: string; // ドメイン管理会社
+  domainExpiry: string; // ドメイン有効期限
+  sslType: string; // SSL証明書
+  mailServer: string; // メールサーバー
+  dnsManagement: string; // DNS管理
+
   // メタ
   createdAt: string;
   updatedAt: string;
@@ -129,6 +140,22 @@ export const BUDGET_RANGES = [
   "未定 / 要相談",
 ] as const;
 
+export const SERVER_TYPES = [
+  "レンタルサーバー",
+  "VPS",
+  "クラウド（AWS / GCP / Azure）",
+  "Vercel / Netlify",
+  "自社サーバー",
+  "未定 / おまかせ",
+] as const;
+
+export const SSL_OPTIONS = [
+  "無料SSL（Let's Encrypt）",
+  "有料SSL（企業認証）",
+  "有料SSL（EV認証）",
+  "不明 / おまかせ",
+] as const;
+
 export const PHASES = [
   { key: "basic", label: "基本情報", icon: "📋" },
   { key: "analysis", label: "現状分析", icon: "🔍" },
@@ -183,6 +210,15 @@ export function createEmptyHearing(): HearingSheet {
     writingBy: "",
     operationPlan: "",
     maintenanceRequired: false,
+    serverType: "",
+    serverName: "",
+    serverLoginInfo: "",
+    domainName: "",
+    domainRegistrar: "",
+    domainExpiry: "",
+    sslType: "",
+    mailServer: "",
+    dnsManagement: "",
     createdAt: new Date().toISOString().slice(0, 10),
     updatedAt: new Date().toISOString().slice(0, 10),
     status: "draft",
