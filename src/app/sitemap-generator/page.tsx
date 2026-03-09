@@ -82,6 +82,33 @@ function countNodes(nodes: SitemapNode[]): number {
   return nodes.reduce((sum, n) => sum + 1 + countNodes(n.children), 0);
 }
 
+function flattenNodes(
+  nodes: SitemapNode[],
+  depth: number = 0,
+  parent: string = ""
+): { name: string; slug: string; icon: string; description: string; depth: number; parent: string }[] {
+  const rows: { name: string; slug: string; icon: string; description: string; depth: number; parent: string }[] = [];
+  for (const n of nodes) {
+    rows.push({
+      name: n.name,
+      slug: n.slug,
+      icon: n.icon,
+      description: n.description,
+      depth,
+      parent,
+    });
+    rows.push(...flattenNodes(n.children, depth + 1, n.name));
+  }
+  return rows;
+}
+
+function escCsv(value: string): string {
+  if (value.includes(",") || value.includes('"') || value.includes("\n")) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
 export default function SitemapGeneratorPage() {
   const [project, setProject] = useState<SitemapProject>(defaultProject);
   const [activeTab, setActiveTab] = useState<"editor" | "preview">("editor");
@@ -159,6 +186,52 @@ export default function SitemapGeneratorPage() {
     }
   }, [project]);
 
+  const handleExportCsv = useCallback(() => {
+    const rows = flattenNodes(project.pages);
+    const headers = ["階層", "ページ名", "スラッグ", "アイコン", "説明", "親ページ"];
+    const lines = rows.map((r) =>
+      [
+        String(r.depth),
+        escCsv(r.name),
+        escCsv(r.slug),
+        r.icon,
+        escCsv(r.description),
+        escCsv(r.parent),
+      ].join(",")
+    );
+    const bom = "\uFEFF";
+    const csv = bom + [headers.join(","), ...lines].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `sitemap_${project.siteName || "export"}_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }, [project]);
+
+  const handleExportTsv = useCallback(() => {
+    const rows = flattenNodes(project.pages);
+    const headers = ["階層", "ページ名", "スラッグ", "アイコン", "説明", "親ページ"];
+    const lines = rows.map((r) =>
+      [
+        String(r.depth),
+        r.name.replace(/\t/g, " "),
+        r.slug.replace(/\t/g, " "),
+        r.icon,
+        r.description.replace(/\t/g, " "),
+        r.parent.replace(/\t/g, " "),
+      ].join("\t")
+    );
+    const bom = "\uFEFF";
+    const tsv = bom + [headers.join("\t"), ...lines].join("\n");
+    const blob = new Blob([tsv], { type: "text/tab-separated-values;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `sitemap_${project.siteName || "export"}_${new Date().toISOString().slice(0, 10)}.tsv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }, [project]);
+
   return (
     <AppLayout>
       <div className="flex h-full flex-col">
@@ -169,23 +242,37 @@ export default function SitemapGeneratorPage() {
               サイトマップジェネレーター
             </h1>
             <p className="text-sm text-zinc-500">
-              ページ構成を設計してHTML/PDFで出力
+              ページ構成を設計してCSV/HTML/PDFで出力
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={handleExportCsv}
+              disabled={project.pages.length === 0}
+              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+            >
+              CSV
+            </button>
+            <button
+              onClick={handleExportTsv}
+              disabled={project.pages.length === 0}
+              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+            >
+              TSV
+            </button>
             <button
               onClick={handleExportHtml}
               disabled={project.pages.length === 0}
-              className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
             >
-              HTML出力
+              HTML
             </button>
             <button
               onClick={handlePrint}
               disabled={project.pages.length === 0}
-              className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-40 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+              className="rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-40 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
             >
-              PDF（印刷）
+              PDF
             </button>
           </div>
         </div>
