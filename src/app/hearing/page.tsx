@@ -211,12 +211,23 @@ export default function HearingPage() {
                   次へ
                 </button>
               ) : (
-                <button
-                  onClick={() => update({ status: "completed" })}
-                  className="rounded-lg bg-green-600 px-5 py-2 text-sm font-medium text-white hover:bg-green-500"
-                >
-                  完了にする
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => update({ status: "completed" })}
+                    className="rounded-lg bg-green-600 px-5 py-2 text-sm font-medium text-white hover:bg-green-500"
+                  >
+                    完了にする
+                  </button>
+                  <button
+                    onClick={() => {
+                      sessionStorage.setItem("webcraft_hearing_for_proposal", JSON.stringify(data));
+                      window.location.href = "/proposal";
+                    }}
+                    className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-500"
+                  >
+                    提案書を生成
+                  </button>
+                </div>
               )}
             </div>
           </div>

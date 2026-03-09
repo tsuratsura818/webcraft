@@ -9,6 +9,7 @@ const navItems = [
   { href: "/sitemap-tool", label: "ディレクトリマップ", icon: "🗺️" },
   { href: "/sitemap-generator", label: "サイトマップ作成", icon: "🌳" },
   { href: "/hearing", label: "ヒアリングシート", icon: "📝" },
+  { href: "/proposal", label: "提案書生成", icon: "✨" },
 ];
 
 export function Sidebar() {
