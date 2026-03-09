@@ -91,6 +91,68 @@ export default function ProposalPage() {
     [proposal]
   );
 
+  const loadDemo = useCallback(() => {
+    const demo: HearingSheet = {
+      clientName: "株式会社さくらウェブ",
+      clientIndustry: "Web制作・デジタルマーケティング",
+      clientUrl: "https://sakura-web.co.jp",
+      contactPerson: "佐藤花子",
+      contactEmail: "sato@sakura-web.co.jp",
+      contactPhone: "03-9876-5432",
+      currentSituation: "5年前に制作したサイトが古くなり、スマートフォン対応ができていない。問い合わせが減少傾向で、競合他社に遅れをとっている。",
+      competitors: "https://competitor-a.co.jp（モダンなデザインで参考にしたい）, https://competitor-b.co.jp（SEOが強い）",
+      existingMaterials: "ロゴデータ（AI/PNG）、会社パンフレット（PDF）、過去の制作実績写真",
+      accessAnalysis: "月間PV: 8,000 / UU: 3,200 / 直帰率: 65% / 平均滞在時間: 1分30秒",
+      strengths: "創業15年の実績、幅広い業界対応力、ワンストップ対応（企画〜運用）",
+      weaknesses: "Webサイトが古い、SNS活用が不十分、採用が難しい",
+      opportunities: "DX需要の増加、中小企業のWeb化推進、補助金活用の機会",
+      threats: "格安Web制作会社の台頭、AI活用ツールの普及、大手の中小市場参入",
+      targetUsers: "中小企業（従業員10〜100名）の経営者・マーケティング担当者",
+      personaAge: "35〜50代",
+      personaGender: "男女問わず",
+      personaOccupation: "中小企業経営者・Web担当者",
+      personaNeeds: "売上アップにつながるWebサイトが欲しい、自社で更新できるようにしたい、SEO対策もしっかりしたい",
+      customerJourney: "Google検索「Web制作 東京」→ サイト訪問 → 実績ページ閲覧 → 料金確認 → 資料請求/問い合わせ → 商談 → 受注",
+      brandMessage: "ビジネスを加速させるWebパートナー - 戦略から運用まで伴走します",
+      kgi: "年間売上30%アップ（現在8,000万→1億400万）",
+      kpi: "月間問い合わせ数: 20件→40件、サイトPV: 8,000→20,000、CVR: 1%→3%",
+      monetization: "Web制作受注（単価100〜500万円）、保守運用契約（月額3〜10万円）",
+      projectGoal: "コーポレートサイトの全面リニューアルによる信頼性向上と問い合わせ数倍増",
+      siteType: "コーポレートサイト",
+      requiredPages: "トップページ、会社概要（代表挨拶・沿革・アクセス）、サービス紹介（Web制作・マーケティング・運用保守）、制作実績（カテゴリ別フィルタ付き）、料金プラン、ブログ/お知らせ、採用情報、お問い合わせ、プライバシーポリシー",
+      features: ["お問い合わせフォーム", "ブログ / お知らせ", "FAQ / よくある質問", "資料ダウンロード", "SNSフィード表示", "管理画面（CMS）"],
+      cmsType: "WordPress",
+      designPreference: "モダン・クリーンで信頼感のあるデザイン。ブルー系をベースカラーに、アクセントにオレンジ。余白を活かした読みやすいレイアウト。",
+      referenceUrls: "https://reference-modern.co.jp（レイアウト参考）, https://reference-clean.co.jp（色使い参考）",
+      responsiveRequired: true,
+      seoRequired: true,
+      analyticsRequired: true,
+      snsIntegration: ["X (Twitter)", "Instagram", "Facebook"],
+      budgetRange: "200〜500万円",
+      desiredLaunch: "2026-07-01",
+      priority: "品質重視",
+      materialsProvided: ["ロゴデータ", "写真素材", "テキスト原稿", "パンフレット / チラシ"],
+      writingBy: "一部は制作会社に依頼（サービス紹介・会社概要）、ブログは自社で更新",
+      operationPlan: "社内のWeb担当者1名がCMSで更新運用、月1回の分析レポートは制作会社に依頼",
+      maintenanceRequired: true,
+      serverType: "レンタルサーバー",
+      serverName: "エックスサーバー ビジネスプラン",
+      serverLoginInfo: "",
+      domainName: "sakura-web.co.jp",
+      domainRegistrar: "お名前.com",
+      domainExpiry: "2027-06-15",
+      sslType: "無料SSL（Let's Encrypt）",
+      mailServer: "エックスサーバー メール",
+      dnsManagement: "お名前.com",
+      createdAt: "2026-03-09",
+      updatedAt: "2026-03-09",
+      status: "completed",
+      notes: "7月1日の創業記念日に合わせてリニューアル公開したい。既存サイトのURLはできるだけ維持してリダイレクト対応をお願いしたい。",
+    };
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(demo));
+    setHearing(demo);
+  }, []);
+
   if (!hearing) {
     return (
       <AppLayout>
@@ -102,12 +164,20 @@ export default function ProposalPage() {
             <p className="mt-2 text-sm text-zinc-500">
               先にヒアリングシートを入力してから「提案書を生成」してください
             </p>
-            <a
-              href="/hearing"
-              className="mt-4 inline-block rounded-lg bg-zinc-900 px-5 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900"
-            >
-              ヒアリングシートへ
-            </a>
+            <div className="mt-4 flex items-center justify-center gap-3">
+              <a
+                href="/hearing"
+                className="inline-block rounded-lg bg-zinc-900 px-5 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900"
+              >
+                ヒアリングシートへ
+              </a>
+              <button
+                onClick={loadDemo}
+                className="rounded-lg border border-blue-300 bg-blue-50 px-5 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+              >
+                デモデータで試す
+              </button>
+            </div>
           </div>
         </div>
       </AppLayout>
