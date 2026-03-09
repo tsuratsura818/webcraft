@@ -19,6 +19,57 @@ import {
   generateHearingTsv,
 } from "@/lib/hearing/export";
 
+type AiType = "swot" | "journey" | "kpi" | "brand";
+
+function useAiAnalysis(data: HearingSheet, update: (partial: Partial<HearingSheet>) => void) {
+  const [loading, setLoading] = useState<AiType | null>(null);
+  const [error, setError] = useState("");
+
+  const analyze = useCallback(
+    async (type: AiType) => {
+      setLoading(type);
+      setError("");
+      try {
+        const res = await fetch("/api/hearing-ai", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type,
+            context: {
+              clientName: data.clientName,
+              clientIndustry: data.clientIndustry,
+              clientUrl: data.clientUrl,
+              currentSituation: data.currentSituation,
+              competitors: data.competitors,
+              targetUsers: data.targetUsers,
+              projectGoal: data.projectGoal,
+              siteType: data.siteType,
+              strengths: data.strengths,
+              weaknesses: data.weaknesses,
+              opportunities: data.opportunities,
+              threats: data.threats,
+            },
+          }),
+        });
+        const result = await res.json();
+        if (!res.ok) {
+          setError(result.error || "エラーが発生しました");
+          return;
+        }
+        // 結果を各フィールドに反映
+        update(result);
+      } catch {
+        setError("通信エラーが発生しました");
+      } finally {
+        setLoading(null);
+      }
+    },
+    [data, update]
+  );
+
+  return { analyze, loading, error };
+}
+
 export default function HearingPage() {
   const [data, setData] = useState<HearingSheet>(createEmptyHearing());
   const [phase, setPhase] = useState(0);
@@ -28,6 +79,8 @@ export default function HearingPage() {
       setData((prev) => ({ ...prev, ...partial, updatedAt: new Date().toISOString().slice(0, 10) })),
     []
   );
+
+  const ai = useAiAnalysis(data, update);
 
   const toggleArray = useCallback(
     (key: "features" | "snsIntegration" | "materialsProvided", value: string) => {
@@ -128,8 +181,8 @@ export default function HearingPage() {
         <div className="flex-1 overflow-y-auto p-6">
           <div className="mx-auto max-w-2xl">
             {phase === 0 && <PhaseBasic data={data} update={update} />}
-            {phase === 1 && <PhaseAnalysis data={data} update={update} />}
-            {phase === 2 && <PhaseStrategy data={data} update={update} />}
+            {phase === 1 && <PhaseAnalysis data={data} update={update} ai={ai} />}
+            {phase === 2 && <PhaseStrategy data={data} update={update} ai={ai} />}
             {phase === 3 && (
               <PhaseRequirements data={data} update={update} toggleArray={toggleArray} />
             )}
@@ -350,11 +403,58 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
+// --- AI提案ボタン ---
+
+interface AiHook {
+  analyze: (type: AiType) => Promise<void>;
+  loading: AiType | null;
+  error: string;
+}
+
+function AiSuggestButton({
+  type,
+  label,
+  ai,
+}: {
+  type: AiType;
+  label: string;
+  ai: AiHook;
+}) {
+  return (
+    <div className="mb-4">
+      <button
+        onClick={() => ai.analyze(type)}
+        disabled={ai.loading !== null}
+        className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100 disabled:opacity-50 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50"
+      >
+        {ai.loading === type ? (
+          <>
+            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-blue-300 border-t-blue-600" />
+            AI分析中...
+          </>
+        ) : (
+          <>
+            <span>✨</span>
+            {label}
+          </>
+        )}
+      </button>
+      {ai.error && ai.loading === null && (
+        <p className="mt-1 text-xs text-red-500">{ai.error}</p>
+      )}
+    </div>
+  );
+}
+
 // --- フェーズ別コンポーネント ---
 
 interface PhaseProps {
   data: HearingSheet;
   update: (partial: Partial<HearingSheet>) => void;
+}
+
+interface PhaseWithAiProps extends PhaseProps {
+  ai: AiHook;
 }
 
 interface PhaseWithArrayProps extends PhaseProps {
@@ -389,7 +489,7 @@ function PhaseBasic({ data, update }: PhaseProps) {
   );
 }
 
-function PhaseAnalysis({ data, update }: PhaseProps) {
+function PhaseAnalysis({ data, update, ai }: PhaseWithAiProps) {
   return (
     <div>
       <SectionTitle>🔍 現状分析</SectionTitle>
@@ -406,7 +506,10 @@ function PhaseAnalysis({ data, update }: PhaseProps) {
         <TextArea value={data.accessAnalysis} onChange={(v) => update({ accessAnalysis: v })} placeholder="月間PV: 約5,000 / 直帰率: 70%" />
       </Field>
 
-      <h3 className="mb-3 mt-6 text-sm font-semibold text-zinc-700 dark:text-zinc-300">SWOT分析</h3>
+      <div className="mt-6 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">SWOT分析</h3>
+        <AiSuggestButton type="swot" label="AIでSWOT分析を提案" ai={ai} />
+      </div>
       <div className="grid grid-cols-2 gap-4">
         <Field label="強み (Strengths)">
           <TextArea value={data.strengths} onChange={(v) => update({ strengths: v })} placeholder="技術力、実績、ブランド認知" rows={3} />
@@ -425,7 +528,7 @@ function PhaseAnalysis({ data, update }: PhaseProps) {
   );
 }
 
-function PhaseStrategy({ data, update }: PhaseProps) {
+function PhaseStrategy({ data, update, ai }: PhaseWithAiProps) {
   return (
     <div>
       <SectionTitle>🎯 ターゲット・戦略立案</SectionTitle>
@@ -449,14 +552,27 @@ function PhaseStrategy({ data, update }: PhaseProps) {
       <Field label="ニーズ・課題">
         <TextArea value={data.personaNeeds} onChange={(v) => update({ personaNeeds: v })} placeholder="信頼できるWeb制作会社を探している / コスト感を知りたい" />
       </Field>
+
+      <div className="mt-4 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">カスタマージャーニー</h3>
+        <AiSuggestButton type="journey" label="AIでジャーニーを提案" ai={ai} />
+      </div>
       <Field label="カスタマージャーニー" hint="認知→興味→比較→行動の流れ">
-        <TextArea value={data.customerJourney} onChange={(v) => update({ customerJourney: v })} placeholder="Google検索 → サービスページ閲覧 → 実績確認 → 問い合わせ" rows={3} />
+        <TextArea value={data.customerJourney} onChange={(v) => update({ customerJourney: v })} placeholder="Google検索 → サービスページ閲覧 → 実績確認 → 問い合わせ" rows={4} />
       </Field>
 
-      <h3 className="mb-3 mt-6 text-sm font-semibold text-zinc-700 dark:text-zinc-300">ブランディング・KPI</h3>
+      <div className="mt-4 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">ブランディング</h3>
+        <AiSuggestButton type="brand" label="AIでブランディング提案" ai={ai} />
+      </div>
       <Field label="ブランドメッセージ・トンマナ">
-        <TextArea value={data.brandMessage} onChange={(v) => update({ brandMessage: v })} placeholder="信頼感、誠実さ、先進的なイメージ / カラー: ネイビー系" />
+        <TextArea value={data.brandMessage} onChange={(v) => update({ brandMessage: v })} placeholder="信頼感、誠実さ、先進的なイメージ / カラー: ネイビー系" rows={4} />
       </Field>
+
+      <div className="mt-4 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">KGI・KPI</h3>
+        <AiSuggestButton type="kpi" label="AIでKGI/KPIを提案" ai={ai} />
+      </div>
       <div className="grid grid-cols-2 gap-4">
         <Field label="KGI（最終目標）">
           <TextArea value={data.kgi} onChange={(v) => update({ kgi: v })} placeholder="月間問い合わせ数 30件" />
