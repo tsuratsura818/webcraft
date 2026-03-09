@@ -3,6 +3,9 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { HearingSheet } from "@/types/hearing";
 import type { ProposalSection } from "@/types/proposal";
 
+// Vercel Hobby: ストリーミングで最大60秒
+export const maxDuration = 60;
+
 const client = new Anthropic();
 
 function hearingContext(data: HearingSheet): string {
@@ -73,36 +76,35 @@ ${ctx}
 - 各ページに「ページ名」「URL」「主なコンテンツ」「備考」を記載
 - 階層構造をインデントで表現
 - ページ数は必要に応じて適切に
+- 簡潔にまとめ、必ず</html>まで完結させること
 
 完成されたHTMLのみを返してください。\`\`\`やコードブロックは不要です。スタイルは<style>タグで埋め込み。フォントは-apple-system, sans-serif。背景白。`,
 
-  wireframes: (ctx) => `あなたはWEB制作会社のUIデザイナーです。以下のヒアリング情報から全ページのワイヤーフレームをHTMLで作成してください。
+  wireframes: (ctx) => `あなたはWEB制作会社のUIデザイナーです。以下のヒアリング情報から主要ページのワイヤーフレームをHTMLで作成してください。
 
 ${ctx}
 
 要件:
-- 各ページごとにセクションを分けて、レイアウト構成を示す
+- トップページ・会社概要・お問い合わせの3ページに絞る
 - グレーの矩形とテキストでワイヤーフレームを表現
 - 各要素に「ここにはXXが入る」等の注記を入れる
-- ページ間の遷移（どのボタンがどのページに飛ぶか）を注記で示す
-- アニメーション指示がある場合は「[Animation] フェードイン 0.3s」のように注記
 - ヘッダー・フッターの共通要素も示す
 - SP（モバイル）での変更点も注記する
+- 簡潔にまとめ、必ず</html>まで完結させること
 
-完成されたHTMLのみを返してください。\`\`\`やコードブロックは不要です。スタイルは<style>タグで埋め込み。背景白。各ページは改ページ可能にする。`,
+完成されたHTMLのみを返してください。\`\`\`やコードブロックは不要です。スタイルは<style>タグで埋め込み。背景白。`,
 
   topDesign: (ctx) => `あなたはWEB制作会社のデザイナーです。以下のヒアリング情報からTOPページのデザインモックアップをHTML/CSSで作成してください。
 
 ${ctx}
 
 要件:
-- 実際のデザインに近いモックアップ（ダミーテキスト・プレースホルダー画像使用可）
+- 実際のデザインに近いモックアップ（ダミーテキスト使用可）
 - ブランドカラー・トンマナを反映
-- ヘッダー（ロゴ・ナビ）、ヒーロー、各セクション、フッターを含む
-- レスポンシブデザイン
-- CSSアニメーション（フェードイン等）を含む
+- ヘッダー（ロゴ・ナビ）、ヒーロー、主要3セクション、フッターを含む
 - プレースホルダー画像はCSS背景色の矩形で代用（外部URL不使用）
-- モダンでプロフェッショナルなデザイン
+- JavaScriptは使わず、CSSのみでデザイン
+- 簡潔にまとめ、必ず</html>まで完結させること
 
 完成されたHTMLのみを返してください。\`\`\`やコードブロックは不要です。全スタイルは<style>タグに埋め込み。`,
 
@@ -114,9 +116,8 @@ ${ctx}
 - フェーズ: ヒアリング → 企画・戦略 → 設計 → デザイン → コーディング → テスト → 公開 → 運用開始
 - 各フェーズに期間（週単位）と主な作業内容を記載
 - ガントチャート風のビジュアル表示（CSSで横棒グラフ）
-- マイルストーン（中間確認、デザインFIX等）を明示
 - 希望公開日から逆算
-- クライアント確認が必要なタイミングを明示
+- 簡潔にまとめ、必ず</html>まで完結させること
 
 完成されたHTMLのみを返してください。\`\`\`やコードブロックは不要です。スタイルは<style>タグで埋め込み。`,
 
@@ -128,9 +129,8 @@ ${ctx}
 - フェーズごとに分けて（契約前 / 企画段階 / デザイン段階 / 構築段階 / 公開前 / 公開後）
 - チェックボックス形式
 - 各タスクに「いつまでに」「誰が」「何を」を明記
-- 素材提供、原稿作成、確認・承認、アカウント情報提供等を含む
-- サーバー・ドメイン関連のタスクも含む
 - 優先度（必須/推奨）も表示
+- 簡潔にまとめ、必ず</html>まで完結させること
 
 完成されたHTMLのみを返してください。\`\`\`やコードブロックは不要です。スタイルは<style>タグで埋め込み。印刷対応。`,
 };
@@ -149,18 +149,40 @@ export async function POST(req: NextRequest) {
     const ctx = hearingContext(hearingData);
     const prompt = PROMPTS[section](ctx);
 
-    const message = await client.messages.create({
+    const stream = client.messages.stream({
       model: "claude-sonnet-4-6",
-      max_tokens: 8192,
+      max_tokens: 16384,
       messages: [{ role: "user", content: prompt }],
     });
 
-    const text =
-      message.content[0].type === "text" ? message.content[0].text : "";
+    const encoder = new TextEncoder();
+    const readable = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const event of stream) {
+            if (
+              event.type === "content_block_delta" &&
+              event.delta.type === "text_delta"
+            ) {
+              controller.enqueue(encoder.encode(event.delta.text));
+            }
+          }
+          controller.close();
+        } catch (err) {
+          controller.error(err);
+        }
+      },
+    });
 
-    return NextResponse.json({ html: text });
+    return new Response(readable, {
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "Transfer-Encoding": "chunked",
+      },
+    });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : "提案書生成中にエラーが発生しました";
+    const msg =
+      error instanceof Error ? error.message : "提案書生成中にエラーが発生しました";
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

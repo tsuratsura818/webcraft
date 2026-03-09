@@ -41,12 +41,28 @@ export default function ProposalPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ section, hearingData: hearing }),
         });
-        const data = await res.json();
+
         if (!res.ok) {
+          const data = await res.json();
           setError(data.error || "生成に失敗しました");
           return;
         }
-        setProposal((prev) => ({ ...prev, [section]: data.html }));
+
+        const reader = res.body?.getReader();
+        if (!reader) {
+          setError("ストリーム取得に失敗しました");
+          return;
+        }
+
+        const decoder = new TextDecoder();
+        let html = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          html += decoder.decode(value, { stream: true });
+          setProposal((prev) => ({ ...prev, [section]: html }));
+        }
       } catch {
         setError("通信エラーが発生しました");
       } finally {
