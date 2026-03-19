@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import type { HearingSheet } from "@/types/hearing";
 import {
@@ -138,6 +138,81 @@ export default function HearingPage() {
     }
   }, [data]);
 
+  // BannerForge 連携：ヒアリングデータをクリップボードにコピー
+  const [copiedForBannerForge, setCopiedForBannerForge] = useState(false);
+  const copyForBannerForge = useCallback(() => {
+    const exportData = {
+      clientName:       data.clientName,
+      clientIndustry:   data.clientIndustry,
+      personaAge:       data.personaAge,
+      personaGender:    data.personaGender,
+      personaOccupation: data.personaOccupation,
+      personaNeeds:     data.personaNeeds,
+      strengths:        data.strengths,
+      competitors:      data.competitors,
+      referenceUrls:    data.referenceUrls,
+      brandMessage:     data.brandMessage,
+      siteType:         data.siteType,
+      designPreference: data.designPreference,
+    };
+    navigator.clipboard.writeText(JSON.stringify(exportData, null, 2));
+    setCopiedForBannerForge(true);
+    setTimeout(() => setCopiedForBannerForge(false), 3000);
+  }, [data]);
+
+  // 企画書アップロード
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [dragOver, setDragOver] = useState(false);
+
+  const handleUpload = useCallback(
+    async (file: File) => {
+      setUploading(true);
+      setUploadError("");
+      try {
+        const form = new FormData();
+        form.append("file", file);
+        const res = await fetch("/api/upload-analyze", { method: "POST", body: form });
+        const result = await res.json();
+        if (!res.ok) {
+          setUploadError(result.error || "解析に失敗しました");
+          return;
+        }
+        setData((prev) => ({
+          ...prev,
+          ...result.hearingData,
+          updatedAt: new Date().toISOString().slice(0, 10),
+        }));
+        setPhase(0);
+      } catch {
+        setUploadError("通信エラーが発生しました");
+      } finally {
+        setUploading(false);
+      }
+    },
+    []
+  );
+
+  const onFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const f = e.target.files?.[0];
+      if (f) handleUpload(f);
+      e.target.value = "";
+    },
+    [handleUpload]
+  );
+
+  const onDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragOver(false);
+      const f = e.dataTransfer.files[0];
+      if (f) handleUpload(f);
+    },
+    [handleUpload]
+  );
+
   return (
     <AppLayout>
       <div className="flex h-full flex-col">
@@ -156,6 +231,60 @@ export default function HearingPage() {
             <button onClick={() => download("tsv")} className="btn-outline">TSV</button>
             <button onClick={() => download("html")} className="btn-outline">HTML</button>
             <button onClick={printHtml} className="btn-primary">PDF</button>
+            <button
+              onClick={copyForBannerForge}
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-500"
+            >
+              {copiedForBannerForge ? "コピーしました ✓" : "BannerForgeで使用"}
+            </button>
+          </div>
+        </div>
+
+        {/* 企画書アップロード */}
+        <div className="border-b border-zinc-200 bg-blue-50/50 px-6 py-4 dark:border-zinc-800 dark:bg-blue-900/10">
+          <div className="mx-auto max-w-2xl">
+            <p className="mb-2 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+              企画書から自動入力
+            </p>
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={onDrop}
+              onClick={() => !uploading && fileRef.current?.click()}
+              className={`flex cursor-pointer items-center justify-center rounded-lg border-2 border-dashed p-5 text-center transition-colors ${
+                dragOver
+                  ? "border-blue-500 bg-blue-100 dark:bg-blue-900/30"
+                  : "border-zinc-300 hover:border-blue-400 hover:bg-blue-50 dark:border-zinc-600 dark:hover:border-blue-500 dark:hover:bg-blue-900/20"
+              } ${uploading ? "pointer-events-none opacity-60" : ""}`}
+            >
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".pdf,.docx,.pptx,.doc,.ppt"
+                onChange={onFileChange}
+                className="hidden"
+              />
+              {uploading ? (
+                <div className="flex items-center gap-3">
+                  <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-blue-300 border-t-blue-600" />
+                  <span className="text-sm text-blue-700 dark:text-blue-300">
+                    AIが企画書を解析中...
+                  </span>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+                    ここにファイルをドロップ、またはクリックして選択
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-400">
+                    PDF / Word (.docx) / PowerPoint (.pptx) 対応（10MB以下）
+                  </p>
+                </div>
+              )}
+            </div>
+            {uploadError && (
+              <p className="mt-2 text-sm text-red-600 dark:text-red-400">{uploadError}</p>
+            )}
           </div>
         </div>
 
